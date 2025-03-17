@@ -231,7 +231,8 @@ def handle_trb(soup):
             ruby_tag.append(custom_tag.contents[0])
         else:
             ruby_tag.append(text[0:split_pos].strip())
-
+        if len(text) == 0:
+            continue
         rt_text = text[split_pos:].split('（')[1].split('）')[0]
         rt_tag.append(rt_text.strip())
 

@@ -1,4 +1,5 @@
 import json
+from os import write
 from wsgiref import headers
 
 import requests
@@ -22,8 +23,15 @@ session = requests.Session()
 #     'From': 'youremail@domain.example'  # This is another valid field
 # }
 # print(requests.get(url, headers=headers).content)
-cid = '172779_001'
-api_requests.login(session, 'miller.tanaka@yandex.ru', '10012001f')
+username = 'test@test.com'
+password = 'test'
+
+bookId = '505068'
+volumeId = '001'
+
+
+cid = f'{bookId}_{volumeId}'
+api_requests.login(session, username, password)\
 
 content_info_json = api_requests.get_content_info(session, cid)
 arrays = [deofuscator_helpers.get_array(content_info_json['items'][0]['stbl'], content_info_json['items'][0]['seed']),
@@ -44,4 +52,4 @@ content = deofuscator.process_html(content['ttx'], content_info_json)
 
 epub_builder.construct_epub(session, content, content_info_json)
 
-
+epub_builder.compress_epub(content_info_json)

@@ -1,4 +1,6 @@
+import zipfile
 from difflib import ndiff
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 
@@ -71,7 +73,8 @@ def get_img_and_a_tag(div):
 
 
 def get_base_xhtml(stroke, title, body_class, div_class):
-    with open('base_xhtml.xhtml', 'r', encoding='utf-8') as base_file:
+    input_ = str(os.path.join(Path.cwd(), 'base_xhtml.xhtml'))
+    with open(input_, 'r', encoding='utf-8') as base_file:
         content = base_file.read()
 
     base_xhtml = BeautifulSoup(content, 'html.parser')
@@ -100,7 +103,8 @@ def handle_pages_img(soup, img, name, title, epub_folder):
     new_paragraph = soup.new_tag('p')
     new_paragraph.append(img)
     main_div.append(new_paragraph)
-    with open(epub_folder + '/item/xhtml/' + name_converted, 'w', encoding='utf-8') as conver_file:
+    output = str(os.path.join(Path.cwd(), epub_folder, 'item', 'xhtml', name_converted))
+    with open(output, 'w', encoding='utf-8') as conver_file:
         conver_file.write(str(base))
     return name, name_converted
 
@@ -123,7 +127,8 @@ def handle_pages_text(soup, name, t_pb, title, epub_folder):
     del t_pb['stroke']
 
     main_div.append(t_pb)
-    with open(epub_folder + '/item/xhtml/' + name, 'w', encoding='utf-8') as page_file:
+    output = str(os.path.join(Path.cwd(), epub_folder, 'item', 'xhtml', name))
+    with open(output, 'w', encoding='utf-8') as page_file:
         page_file.write(str(base))
 
 
@@ -205,7 +210,7 @@ def download_images(soup, content_info_json, session, epub_folder):
     for img in soup.find_all('img'):
         file_name = os.path.basename(img['src'])
         path = f'img/{file_name}'
-        output = str(os.path.join(epub_folder + '/item/image', file_name))
+        output = str(os.path.join(Path.cwd(), epub_folder, 'item', 'image', file_name))
         if 'gaiji' in img['class'] or 'gaiji' == img['class']:
             img_data = api_requests.get_img_b64(session, items['ContentID'], path, items['p'], items['ContentDate'])
             img_data = img_data['Data'].split(',')[1]
@@ -223,12 +228,13 @@ def download_images(soup, content_info_json, session, epub_folder):
         content = api_requests.get_cover(session, items['ThumbnailImageURL'])
         image = Image.open(BytesIO(content))
 
-        output = str(os.path.join(epub_folder + '/item/image', 'cover.png'))
+        output = str(os.path.join(Path.cwd(), epub_folder, 'item', 'image', 'cover.png'))
         image.save(output)
 
 
 def build_opf(content_info_json, epub_folder, xhtml_files):
-    with open('base_opf.xhtml') as base_opf:
+    input_ = str(os.path.join(Path.cwd(), 'base_opf.xhtml'))
+    with open(input_, 'r', encoding='utf-8') as base_opf:
         content = base_opf.read()
 
     items = content_info_json['items'][0]
@@ -252,7 +258,8 @@ def build_opf(content_info_json, epub_folder, xhtml_files):
     spine_tag = base_opf.find('spine')
     standard_opf_helpers.handle_spine(base_opf, spine_tag, xhtml_files)
 
-    with open(epub_folder + '/item/standard.opf', 'w', encoding='utf-8') as standard_file:
+    output = str(os.path.join(Path.cwd(), epub_folder, 'item', 'standard.opf'))
+    with open(output, 'w', encoding='utf-8') as standard_file:
         standard_file.write(str(base_opf))
 
 
@@ -280,7 +287,8 @@ def choose_file_from_directory(custom_string, directory_path):
 
 
 def build_navigation_documents(soup, epub_folder):
-    with open('nav-doc_base.xhtml') as nav_doc_base:
+    input_ = str(os.path.join(Path.cwd(), 'nav-doc_base.xhtml'))
+    with open(input_, 'r', encoding='utf-8') as nav_doc_base:
         base_nav_doc = nav_doc_base.read()
 
     base_nav_doc = BeautifulSoup(base_nav_doc, 'html.parser')
@@ -321,7 +329,8 @@ def build_navigation_documents(soup, epub_folder):
         li_toc.append(a_toc)
         lists[1].append(li_toc)
 
-    with open(epub_folder + '/item/' + 'navigation-documents.xhtml', 'w', encoding='utf-8') as nav_doc:
+    output = str(os.path.join(Path.cwd(), epub_folder, 'item', 'navigation-documents.xhtml'))
+    with open(output, 'w', encoding='utf-8') as nav_doc:
         nav_doc.write(str(base_nav_doc))
 
 
@@ -404,4 +413,16 @@ def construct_epub(session, html_content, content_info_json):
     build_navigation_documents(new_html, 'epub')
 
 
-
+def compress_epub(content_info_json):
+    input_ = str(os.path.join(Path.cwd(), 'epub'))
+    output = str(os.path.join(Path.cwd(), 'build', f'{content_info_json['items'][0]['Title']}.epub'))
+    with zipfile.ZipFile(output, mode='w') as zipf:
+        # 使用 os.walk 递归遍历文件夹和子文件夹
+        for root, dirs, files in os.walk(input_):
+            for file in files:
+                # 获取文件的完整路径
+                full_path = os.path.join(root, file)
+                # 在ZIP文件中保存相对路径，这样可以保留文件夹结构
+                arcname = os.path.relpath(full_path, start=input_)
+                # 写入文件到ZIP
+                zipf.write(full_path, arcname)
